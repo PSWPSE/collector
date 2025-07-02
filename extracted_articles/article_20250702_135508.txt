@@ -1,0 +1,88 @@
+제목: Yahoo Finance
+================================================================================
+
+메타 정보:
+description: (Bloomberg) -- China faces growing calls from policy advisers and economists to explore using stablecoins for cross-border payments, as the US moves to entrench the dollar’s dominance through the still-emerging technology.Most Read from BloombergStruggling Downtowns Are Looking to Lure New CrowdsSprawl Is Still Not the AnswerCalifornia Exempts Building Projects From Environmental LawWhile China hasn’t formally embraced stablecoins — digital tokens pegged to traditional currencies — and maintains
+keywords: global payments, China, Bank of China, digital tokens, digital currencies, Hong Kong, stablecoins, cross-border payments
+--------------------------------------------------------------------------------
+
+본문:
+In This Article:
+
+(Bloomberg) — China faces growing calls from policy advisers and economists to explore using stablecoins for cross-border payments, as the US moves to entrench the dollar’s dominance through the still-emerging technology.
+
+Most Read from Bloomberg
+
+Struggling Downtowns Are Looking to Lure New Crowds
+
+Sprawl Is Still Not the Answer
+
+California Exempts Building Projects From Environmental Law
+
+While China hasn’t formally embraced stablecoins — digital tokens pegged to traditional currencies — and maintains a sweeping ban on crypto activities, recent remarks from senior central bank officials have given fresh momentum to discussions about their potential role in global payments.
+
+People’s Bank of China Governor Pan Gongsheng said in June that stablecoins could revolutionize international finance, particularly as rising geopolitical tensions highlight the fragility of traditional payment systems, which he warned can be politicized and used as a sanction tool.
+
+At the same Shanghai event, former central bank head Zhou Xiaochuan said dollar-linked stablecoins could facilitate dollarization. Other mainland and Hong Kong financial officials talked about the potential for yuan-based stablecoins to support China’s long-running effort to promote its currency on the world stage.
+
+Beijing has long been wary of cryptocurrencies, viewing them as a threat to financial stability and capital controls. But economists now see an opening, fueled in part by the Trump administration’s growing support for digital tokens.
+
+Morgan Stanley suggests China could use Hong Kong to trial offshore yuan-based stablecoins that would avoid violations of Beijing’s strict capital rules.
+
+“Stablecoins are not new currencies, but new distribution channels for existing ones,” said Robin Xing, chief China economist at Morgan Stanley. “It is crucial for China to embrace the trend of sovereign currency tokenization to maintain competitiveness in the digital infrastructure race.”
+
+Just hours before Pan and other Chinese officials spoke at the June 18 Lujiazui Forum, the US Senate passed a bill regulating stablecoins, in a major win for the crypto industry and a boost for President Donald Trump’s digital asset agenda.
+
+Treasury Secretary Scott Bessent said in a June 19 X post that stablecoins could strengthen — not threaten — the dollar’s dominance.
+
+Bessent told Bloomberg TV on Monday that global users are likely to favor US-backed stablecoins over central bank digital currencies from Europe or China, citing greater trust in the private sector under American regulation than the risk of government control elsewhere.
+
+Stablecoins, typically backed by traditional currencies and issued by private firms, are gaining traction as a faster, cheaper option for cross-border payments. Most are pegged to the dollar and backed by US assets like short-term Treasuries, with total supply projected to reach $3.7 trillion by 2030.
+
+In response, Chinese economists are urging the development of yuan-linked alternatives. “If China doesn’t develop stablecoins, it will essentially withdraw from the competition for next-generation global currency dominance and hand it to others,” said Shen Jianguang, chief economist at JD.com.
+
+JD.com founder Richard Liu reportedly told staff the company plans to apply for stablecoin licenses in all major markets to cut cross-border payment costs by 90% and reduce settlement time to under 10 seconds.
+
+Hong Kong has recently introduced its own regulatory framework for fiat-referenced stablecoins, offering licenses to issuers operating in the city.
+
+JD.com and Ant Group are among the first tech giants expected to apply. Shanghai-listed Zhejiang China Commodities City Group Co., operator of the world’s largest wholesale goods market, has also said it plans to seek a license.
+
+Offshore yuan stablecoins could help China take advantage of mounting global unease with dollar dominance, especially after it was used as a tool of financial pressure on the Kremlin following Russia’s invasion of Ukraine. Interest in the yuan is growing, with more than 30% of China’s goods trade settled in the currency in February, the highest in a decade, though its share in global payments remains modest.
+
+The growing interest in stablecoins comes as China’s own state-backed digital currency, the e-CNY, has struggled to gain traction both at home and abroad. A separate cross-border payments initiative, mBridge, is facing an uncertain future after a main participant, the Bank for International Settlements, pulled out over concerns it could be used to bypass sanctions.
+
+Pan recently announced plans for an international e-CNY center in Shanghai, signaling continued interest in promoting its use for trade.
+
+China should take a “dual track” approach to bolster the yuan’s global use, according to Li Yang, chairman of the state-backed National Institution for Finance and Development and a former PBOC adviser. That would involve continuing traditional efforts, such as expanding currency swaps and the yuan-based CIPS settlement system, while also leveraging Hong Kong’s financial institutions to promote offshore yuan-linked stablecoins.
+
+What Bloomberg Intelligence Says ...
+
+“Hong Kong’s stablecoins can become Beijing’s alternative to sidestep SWIFT, alongside the earlier adopted CIPS and mBridge.” They “could significantly advance the yuan’s global usage. The yuan’s adoption faces a setback — transactions via CIPS have yet to reach a critical mass.”
+
+— Francis Chan, senior banking and fintech analyst. Click here to read the full report.
+
+For now, stablecoins are mostly used for crypto trading instead of business payments, and regulators still need to address risks like fraud and financial crime. While many countries are exploring regulations, key questions remain, like whether stablecoins should be treated as currencies or financial assets.
+
+Ultimately, the global status of a currency is determined by the nation’s overall power and credibility, not a new means of payment, according to Liu Xiaochun, vice president of Shanghai Finance Institute.
+
+Chinese stablecoins may face limits without broader economic reforms, according to Eswar Prasad, a Cornell University professor and author of the book The Future of Money: How the Digital Revolution Is Transforming Currencies and Finance.
+
+“Yuan-linked stablecoins issued in Hong Kong are unlikely to gain much traction in the absence of unification of onshore and offshore exchange markets,” he said.
+
+But stablecoins, he added, could nudge Beijing toward change. By complicating exchange rate and monetary policy management, they might “serve as an incentive to undertake liberalization and market-oriented reforms,” he said.
+
+(Updates with additional comment in fourth to last paragraph.)
+
+Most Read from Bloomberg Businessweek
+
+SNAP Cuts in Big Tax Bill Will Hit a Lot of Trump Voters Too
+
+How to Steal a House
+
+America’s Top Consumer-Sentiment Economist Is Worried
+
+China’s Homegrown Jewelry Superstar
+
+Pistachios Are Everywhere Right Now, Not Just in Dubai Chocolate
+
+©2025 Bloomberg L.P.
