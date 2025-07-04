@@ -1,0 +1,440 @@
+---
+alwaysApply: true
+---
+
+# Anthropic API Client Development Guide - Cursor Rules
+
+## Project Overview
+Building a secure web service where users can log in, manage their Anthropic API keys, and interact with Claude AI through a safe proxy server with usage tracking.
+
+## Core Architecture
+- **Frontend**: Next.js 15 + TypeScript + App Router
+- **Backend**: Next.js API Routes (serverless functions)
+- **Database**: PostgreSQL + Prisma ORM
+- **Authentication**: NextAuth.js v5
+- **Deployment**: Vercel
+- **Security**: Encrypted API key storage
+
+## Technology Stack
+
+### Frontend Dependencies
+```json
+{
+  "dependencies": {
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "@radix-ui/react-dialog": "^1.0.5",
+    "@radix-ui/react-dropdown-menu": "^2.0.6",
+    "@radix-ui/react-tabs": "^1.0.4",
+    "@radix-ui/react-toast": "^1.1.5",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.0.0",
+    "tailwind-merge": "^2.0.0",
+    "lucide-react": "^0.263.1",
+    "react-hook-form": "^7.45.0",
+    "zod": "^3.22.0",
+    "recharts": "^2.8.0",
+    "date-fns": "^2.30.0"
+  }
+}
+```
+
+### Backend Dependencies
+```json
+{
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.24.0",
+    "@next-auth/prisma-adapter": "^1.0.7",
+    "@prisma/client": "^5.6.0",
+    "next-auth": "5.0.0-beta.4",
+    "bcryptjs": "^2.4.3",
+    "crypto-js": "^4.2.0"
+  }
+}
+```
+
+## Code Standards
+
+### File Structure
+```
+src/
+├── app/
+│   ├── api/
+│   │   ├── auth/[...nextauth]/
+│   │   ├── anthropic/
+│   │   ├── api-keys/
+│   │   └── usage/
+│   ├── components/
+│   │   ├── ui/          # shadcn/ui components
+│   │   ├── auth/        # Authentication components
+│   │   ├── dashboard/   # Dashboard components
+│   │   └── api-keys/    # API key management
+│   ├── lib/
+│   │   ├── auth.ts      # NextAuth configuration
+│   │   ├── crypto.ts    # Encryption utilities
+│   │   ├── prisma.ts    # Database client
+│   │   └── utils.ts     # Utility functions
+│   └── types/
+│       └── index.ts     # TypeScript type definitions
+├── prisma/
+│   └── schema.prisma    # Database schema
+└── components/
+    └── ui/              # Reusable UI components
+```
+
+### Database Schema (Prisma)
+```prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  image     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  apiKeys   ApiKey[]
+  requests  Request[]
+  
+  @@map("users")
+}
+
+model ApiKey {
+  id        String   @id @default(cuid())
+  name      String
+  keyHash   String   // Encrypted API key
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  lastUsed  DateTime?
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  requests  Request[]
+  
+  @@map("api_keys")
+}
+
+model Request {
+  id        String   @id @default(cuid())
+  prompt    String
+  response  String?
+  tokens    Int?
+  cost      Float?
+  status    String   // success, error, pending
+  createdAt DateTime @default(now())
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  apiKeyId  String
+  apiKey    ApiKey   @relation(fields: [apiKeyId], references: [id])
+  
+  @@map("requests")
+}
+```
+
+### Security Guidelines
+1. **API Key Encryption**: Always encrypt API keys before storing in database
+2. **Server-Side Validation**: Validate all inputs on the server side
+3. **Session Management**: Use NextAuth.js for secure session handling
+4. **Rate Limiting**: Implement rate limiting for API calls
+5. **Error Handling**: Never expose sensitive information in error messages
+
+### Component Patterns
+
+#### API Key Management Component
+```typescript
+'use client';
+
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Key, Plus, Eye, EyeOff, Trash2 } from 'lucide-react';
+
+interface ApiKeyManagerProps {
+  apiKeys: ApiKey[];
+  onAddKey: (name: string, key: string) => Promise<void>;
+  onDeleteKey: (id: string) => Promise<void>;
+}
+
+export function ApiKeyManager({ apiKeys, onAddKey, onDeleteKey }: ApiKeyManagerProps) {
+  // Implementation...
+}
+```
+
+#### Dashboard Component
+```typescript
+'use client';
+
+import { useMemo } from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { format } from 'date-fns';
+
+interface UsageDashboardProps {
+  requests: Request[];
+}
+
+export function UsageDashboard({ requests }: UsageDashboardProps) {
+  const stats = useMemo(() => {
+    const totalRequests = requests.length;
+    const totalTokens = requests.reduce((sum, req) => sum + (req.tokens || 0), 0);
+    const totalCost = requests.reduce((sum, req) => sum + (req.cost || 0), 0);
+    
+    return { totalRequests, totalTokens, totalCost };
+  }, [requests]);
+
+  // Chart data processing...
+}
+```
+
+### API Route Patterns
+
+#### Anthropic Proxy API
+```typescript
+// app/api/anthropic/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { Anthropic } from '@anthropic-ai/sdk';
+import { decrypt } from '@/lib/crypto';
+import { prisma } from '@/lib/prisma';
+
+export async function POST(request: NextRequest) {
+  try {
+    const session = await getServerSession();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { prompt, apiKeyId, model = 'claude-3-5-sonnet-20241022' } = await request.json();
+    
+    // Validate input
+    if (!prompt || !apiKeyId) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    // Get user's API key
+    const apiKey = await prisma.apiKey.findUnique({
+      where: { id: apiKeyId, userId: session.user.id, isActive: true }
+    });
+
+    if (!apiKey) {
+      return NextResponse.json({ error: 'API key not found' }, { status: 404 });
+    }
+
+    // Decrypt API key
+    const decryptedKey = decrypt(apiKey.keyHash);
+    
+    // Initialize Anthropic client
+    const anthropic = new Anthropic({ apiKey: decryptedKey });
+
+    // Make API call
+    const response = await anthropic.messages.create({
+      model,
+      max_tokens: 4000,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    // Log usage
+    await prisma.request.create({
+      data: {
+        prompt,
+        response: response.content[0].text,
+        tokens: response.usage.input_tokens + response.usage.output_tokens,
+        cost: calculateCost(response.usage, model),
+        status: 'success',
+        userId: session.user.id,
+        apiKeyId: apiKey.id,
+      },
+    });
+
+    // Update last used
+    await prisma.apiKey.update({
+      where: { id: apiKey.id },
+      data: { lastUsed: new Date() },
+    });
+
+    return NextResponse.json({
+      content: response.content[0].text,
+      usage: response.usage,
+    });
+
+  } catch (error) {
+    console.error('Anthropic API error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+```
+
+#### API Key Management API
+```typescript
+// app/api/api-keys/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { encrypt } from '@/lib/crypto';
+import { prisma } from '@/lib/prisma';
+
+export async function POST(request: NextRequest) {
+  try {
+    const session = await getServerSession();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { name, apiKey } = await request.json();
+    
+    // Validate Anthropic API key format
+    if (!apiKey.startsWith('sk-ant-')) {
+      return NextResponse.json({ error: 'Invalid API key format' }, { status: 400 });
+    }
+
+    // Encrypt API key
+    const encryptedKey = encrypt(apiKey);
+
+    // Save to database
+    const savedKey = await prisma.apiKey.create({
+      data: {
+        name,
+        keyHash: encryptedKey,
+        userId: session.user.id,
+      },
+    });
+
+    return NextResponse.json({
+      id: savedKey.id,
+      name: savedKey.name,
+      createdAt: savedKey.createdAt,
+    });
+
+  } catch (error) {
+    console.error('API key creation error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+```
+
+### Utility Functions
+
+#### Encryption/Decryption
+```typescript
+// lib/crypto.ts
+import crypto from 'crypto';
+
+const algorithm = 'aes-256-gcm';
+const secretKey = process.env.ENCRYPTION_SECRET!;
+
+export function encrypt(text: string): string {
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipher(algorithm, secretKey);
+  
+  let encrypted = cipher.update(text, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  
+  return iv.toString('hex') + ':' + encrypted;
+}
+
+export function decrypt(encryptedText: string): string {
+  const [ivHex, encrypted] = encryptedText.split(':');
+  const iv = Buffer.from(ivHex, 'hex');
+  const decipher = crypto.createDecipher(algorithm, secretKey);
+  
+  let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+  
+  return decrypted;
+}
+```
+
+#### Cost Calculation
+```typescript
+// lib/utils.ts
+export function calculateCost(usage: any, model: string): number {
+  const rates = {
+    'claude-3-5-sonnet-20241022': {
+      input: 0.003,  // per 1K tokens
+      output: 0.015, // per 1K tokens
+    },
+    'claude-3-haiku-20240307': {
+      input: 0.00025,
+      output: 0.00125,
+    },
+  };
+
+  const rate = rates[model as keyof typeof rates] || rates['claude-3-5-sonnet-20241022'];
+  
+  const inputCost = (usage.input_tokens / 1000) * rate.input;
+  const outputCost = (usage.output_tokens / 1000) * rate.output;
+  
+  return inputCost + outputCost;
+}
+```
+
+## Development Guidelines
+
+### 1. Security First
+- Always validate user sessions before API access
+- Encrypt sensitive data (API keys) before database storage
+- Use environment variables for secrets
+- Implement proper error handling without exposing internals
+
+### 2. TypeScript Best Practices
+- Define strict types for all data structures
+- Use Zod for runtime validation
+- Implement proper error types
+- Use generic types for reusable components
+
+### 3. Database Operations
+- Use transactions for related operations
+- Implement proper error handling
+- Use Prisma's type safety features
+- Handle database connection errors gracefully
+
+### 4. UI/UX Guidelines
+- Use shadcn/ui components for consistency
+- Implement loading states for async operations
+- Show proper error messages to users
+- Use optimistic updates where appropriate
+
+### 5. Performance Optimization
+- Implement proper caching strategies
+- Use React.memo for expensive components
+- Optimize database queries
+- Implement pagination for large datasets
+
+## Environment Variables
+```env
+DATABASE_URL="postgresql://..."
+NEXTAUTH_SECRET="your-secret-key"
+NEXTAUTH_URL="http://localhost:3000"
+ENCRYPTION_SECRET="your-32-character-encryption-key"
+```
+
+## Testing Strategy
+- Unit tests for utility functions
+- Integration tests for API routes
+- Component tests for UI components
+- End-to-end tests for critical user flows
+
+## Error Handling
+- Use try-catch blocks in all async operations
+- Log errors appropriately (without exposing sensitive data)
+- Return meaningful error messages to users
+- Implement proper HTTP status codes
+
+## Deployment Checklist
+- [ ] Environment variables configured
+- [ ] Database migrations run
+- [ ] SSL/TLS certificates in place
+- [ ] API rate limiting configured
+- [ ] Monitoring and logging setup
+- [ ] Backup strategy implemented
+
+Follow these guidelines to ensure secure, scalable, and maintainable code for the Anthropic API client service.

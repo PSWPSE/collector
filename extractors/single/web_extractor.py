@@ -10,7 +10,7 @@ from selenium.common.exceptions import TimeoutException, WebDriverException
 from webdriver_manager.chrome import ChromeDriverManager
 from fake_useragent import UserAgent
 from datetime import datetime
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, List, Optional, Any, Union, cast
 import logging
 import time
 import os
@@ -26,7 +26,7 @@ class WebExtractor:
         """
         self.use_selenium = use_selenium
         self.save_to_file = save_to_file
-        self.driver = None
+        self.driver: Optional[webdriver.Chrome] = None
         self.session = requests.Session()
         self.ua = UserAgent()
         self.setup_logging()
@@ -97,6 +97,9 @@ class WebExtractor:
     
     def _extract_with_selenium(self, url: str) -> Dict[str, Any]:
         """Selenium을 사용한 데이터 추출"""
+        if self.driver is None:
+            raise RuntimeError("Selenium driver not initialized")
+            
         self.driver.get(url)
         WebDriverWait(self.driver, 20).until(
             EC.presence_of_element_located((By.TAG_NAME, "body"))
@@ -124,19 +127,49 @@ class WebExtractor:
     
     def _find_article(self, soup: BeautifulSoup) -> Optional[Tag]:
         """기사 본문 요소 찾기"""
-        return (soup.find('article') or 
-                soup.find(class_='article') or 
-                soup.find(class_='articlePage') or
-                soup.find(class_=lambda x: x and 'article' in str(x).lower()))
+        # Try different selectors for article content
+        selectors = [
+            'article',
+            '.article',
+            '.articlePage',
+            '.story-body',
+            '.content',
+            '.post-content',
+            '[class*="article"]',
+            '[class*="content"]'
+        ]
+        
+        for selector in selectors:
+            element = soup.select_one(selector)
+            if element and isinstance(element, Tag):
+                return element
+        
+        # Fallback: look for main content area
+        main = soup.find('main') or soup.find('div', {'role': 'main'})
+        if main and isinstance(main, Tag):
+            return main
+            
+        return None
     
     def _get_title(self, soup: BeautifulSoup) -> str:
         """제목 추출"""
-        title = soup.find('h1')
-        if title:
-            return title.get_text().strip()
+        # Try multiple title selectors
+        title_selectors = [
+            'h1',
+            '.headline',
+            '.title',
+            '[class*="title"]',
+            'title'
+        ]
         
-        title = soup.find('title')
-        return title.get_text().strip() if title else 'No Title'
+        for selector in title_selectors:
+            title = soup.select_one(selector)
+            if title and isinstance(title, Tag):
+                text = title.get_text().strip()
+                if text and len(text) > 5:
+                    return text
+        
+        return 'No Title'
     
     def _get_metadata(self, soup: BeautifulSoup) -> Dict[str, str]:
         """메타데이터 추출"""
@@ -144,19 +177,41 @@ class WebExtractor:
         meta_names = ['description', 'author', 'published_time', 'keywords']
         
         for meta in soup.find_all('meta'):
-            name = meta.get('name', meta.get('property', '')).lower()
+            if not isinstance(meta, Tag):
+                continue
+                
+            name = meta.get('name', meta.get('property', ''))
             content = meta.get('content', '')
-            if name in meta_names and content:
-                metadata[name] = content
+            
+            if isinstance(name, str) and isinstance(content, str):
+                name_lower = name.lower()
+                if name_lower in meta_names and content:
+                    metadata[name_lower] = content
         
         return metadata
     
     def _get_content(self, article: Tag) -> Dict[str, Any]:
         """본문 내용 추출"""
         paragraphs = []
-        for p in article.find_all(['p', 'h2', 'h3', 'blockquote']):
-            text = p.get_text().strip()
-            if text and not any(text.startswith(x) for x in ['Recommended', 'Related']):
+        
+        # Find all text content elements
+        content_elements = article.find_all(['p', 'h2', 'h3', 'h4', 'blockquote', 'div'])
+        
+        for element in content_elements:
+            if not isinstance(element, Tag):
+                continue
+                
+            text = element.get_text().strip()
+            
+            # Skip promotional content
+            skip_keywords = [
+                'recommended', 'related', 'subscribe', 'follow', 'download',
+                'sign up', 'newsletter', 'advertisement', 'sponsored'
+            ]
+            
+            if (text and 
+                len(text) > 10 and 
+                not any(keyword in text.lower() for keyword in skip_keywords)):
                 paragraphs.append(text)
         
         return {
@@ -166,22 +221,57 @@ class WebExtractor:
     
     def _get_author(self, soup: BeautifulSoup) -> str:
         """저자 정보 추출"""
-        author = soup.find('meta', {'name': 'author'})
-        if author:
-            return author.get('content', '')
+        # Try meta tag first
+        author_meta = soup.find('meta', {'name': 'author'})
+        if author_meta and isinstance(author_meta, Tag):
+            content = author_meta.get('content', '')
+            if isinstance(content, str) and content:
+                return content
         
-        author = soup.find(class_=lambda x: x and 'author' in str(x).lower())
-        return author.get_text().strip() if author else ''
+        # Try various author selectors
+        author_selectors = [
+            '[class*="author"]',
+            '[class*="byline"]',
+            '.author',
+            '.byline'
+        ]
+        
+        for selector in author_selectors:
+            author = soup.select_one(selector)
+            if author and isinstance(author, Tag):
+                text = author.get_text().strip()
+                if text and len(text) < 100:  # Reasonable author name length
+                    return text
+        
+        return ''
     
     def _get_publish_date(self, soup: BeautifulSoup) -> str:
         """발행일 추출"""
-        date = (soup.find('meta', {'name': 'date'}) or 
-                soup.find('meta', {'property': 'article:published_time'}))
-        if date:
-            return date.get('content', '')
+        # Try meta tags first
+        date_meta = (soup.find('meta', {'name': 'date'}) or 
+                    soup.find('meta', {'property': 'article:published_time'}))
+        if date_meta and isinstance(date_meta, Tag):
+            content = date_meta.get('content', '')
+            if isinstance(content, str) and content:
+                return content
         
-        date = soup.find(class_=lambda x: x and ('date' in str(x).lower() or 'time' in str(x).lower()))
-        return date.get_text().strip() if date else ''
+        # Try various date selectors
+        date_selectors = [
+            '[class*="date"]',
+            '[class*="time"]',
+            '.date',
+            '.time',
+            '.published'
+        ]
+        
+        for selector in date_selectors:
+            date = soup.select_one(selector)
+            if date and isinstance(date, Tag):
+                text = date.get_text().strip()
+                if text and len(text) < 50:  # Reasonable date length
+                    return text
+        
+        return ''
     
     def _error_response(self, url: str, error: str) -> Dict[str, Any]:
         """에러 응답 생성"""
