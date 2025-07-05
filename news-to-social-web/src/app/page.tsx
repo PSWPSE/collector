@@ -86,9 +86,9 @@ export default function Home() {
     setGeneratedContent('');
 
     try {
-      // 25초 타임아웃 설정 (API 20초 + 버퍼)
+      // 70초 타임아웃 설정 (API 60초 + 버퍼)
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 25000);
+      const timeoutId = setTimeout(() => controller.abort(), 70000);
 
       const response = await fetch('/api/convert', {
         method: 'POST',
@@ -140,6 +140,12 @@ export default function Home() {
     }
   };
 
+  // URL 전체 삭제 기능
+  const clearUrl = () => {
+    setNewsUrl('');
+    setError('');
+  };
+
   // 컴포넌트 마운트 시 로컬 스토리지에서 API 키 로드
   React.useEffect(() => {
     const savedApiKey = localStorage.getItem('userApiKey');
@@ -156,10 +162,10 @@ export default function Home() {
         {/* 헤더 */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold mb-2 text-gray-800">
-            뉴스 기사 마크다운 생성기 📰➡️📝
+            뉴스 기사 콘텐츠 생성기 📰➡️📝
           </h1>
           <p className="text-gray-600">
-            뉴스 기사를 체계적인 마크다운 형식으로 변환하세요
+            뉴스 기사를 체계적인 콘텐츠로 변환하세요
           </p>
         </div>
 
@@ -191,7 +197,7 @@ export default function Home() {
                   <button
                     onClick={() => setShowApiKeyForm(true)}
                     className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
-          >
+                  >
                     API 키 설정
                   </button>
                 </div>
@@ -222,7 +228,7 @@ export default function Home() {
                     <button
                       onClick={() => setShowApiKeyForm(false)}
                       className="px-4 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500 text-sm"
-          >
+                    >
                       취소
                     </button>
                   </div>
@@ -236,48 +242,46 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* 입력 섹션 */}
           <div className="bg-white p-6 rounded-lg shadow-sm border">
-            <h2 className="text-lg font-semibold mb-4">뉴스 URL 입력</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">뉴스 URL 입력</h2>
+              <div className="flex items-center gap-2">
+                <div className="relative group">
+                  <button className="text-gray-400 hover:text-gray-600 text-sm">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
+                  <div className="absolute right-0 top-6 w-64 p-3 bg-gray-800 text-white text-xs rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+                    <div className="space-y-1">
+                      <div>• 뉴스 기사 URL을 입력하면 AI가 콘텐츠로 변환합니다</div>
+                      <div>• 대부분의 뉴스 사이트를 지원합니다</div>
+                      <div>• 변환 완료까지 최대 60초 소요됩니다</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
             
             <div className="space-y-4">
               <div>
-                <input
-                  type="url"
-                  placeholder="뉴스 기사 URL을 입력하세요"
-                  value={newsUrl}
-                  onChange={(e) => setNewsUrl(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-                
-                {/* 권장 사이트 안내 */}
-                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                  <p className="text-sm text-blue-700 font-medium mb-2">💡 사용 팁:</p>
-                  <div className="space-y-1 text-xs text-blue-600">
-                    <div>• 뉴스 기사 URL을 입력하면 AI가 마크다운으로 변환합니다</div>
-                    <div>• 대부분의 뉴스 사이트를 지원합니다</div>
-                    <div>• 변환 완료까지 약 20-30초 소요됩니다</div>
-                  </div>
-                </div>
-                
-                {/* 빠른 테스트 버튼들 */}
-                <div className="flex gap-2 flex-wrap">
-                  <button
-                    onClick={() => setNewsUrl('https://finance.yahoo.com/news/us-equity-funds-see-largest-140834520.html')}
-                    className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
-                  >
-                    💰 Yahoo Finance 테스트
-                  </button>
-                  <button
-                    onClick={() => setNewsUrl('https://www.bbc.com/news/technology-68999272')}
-                    className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
-                  >
-                    📰 BBC 테스트
-                  </button>
-                  <button
-                    onClick={() => setNewsUrl('https://techcrunch.com/2024/07/04/ai-news/')}
-                    className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
-                  >
-                    🚀 TechCrunch 테스트
-                  </button>
+                <div className="relative">
+                  <input
+                    type="url"
+                    placeholder="뉴스 기사 URL을 입력하세요"
+                    value={newsUrl}
+                    onChange={(e) => setNewsUrl(e.target.value)}
+                    className="w-full px-4 py-3 pr-10 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  {newsUrl && (
+                    <button
+                      onClick={clearUrl}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -290,7 +294,7 @@ export default function Home() {
                     : 'bg-blue-600 hover:bg-blue-700'
                 }`}
               >
-                {loading ? '마크다운 생성 중...' : '마크다운 생성'}
+                {loading ? '콘텐츠 생성 중...' : '콘텐츠 생성'}
               </button>
             </div>
 
@@ -304,7 +308,7 @@ export default function Home() {
           {/* 결과 섹션 */}
           <div className="bg-white p-6 rounded-lg shadow-sm border">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">생성된 마크다운</h2>
+              <h2 className="text-lg font-semibold">생성된 콘텐츠</h2>
               {generatedContent && (
                 <button
                   onClick={copyToClipboard}
@@ -320,7 +324,7 @@ export default function Home() {
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-gray-600">AI가 마크다운을 생성하고 있습니다...</p>
+                    <p className="text-gray-600">AI가 콘텐츠를 생성하고 있습니다...</p>
                   </div>
                 </div>
               ) : generatedContent ? (
@@ -329,7 +333,7 @@ export default function Home() {
                 </pre>
               ) : (
                 <div className="flex items-center justify-center h-full">
-                  <p className="text-gray-500">생성된 마크다운이 여기에 표시됩니다</p>
+                  <p className="text-gray-500">생성된 콘텐츠가 여기에 표시됩니다</p>
                 </div>
               )}
             </div>

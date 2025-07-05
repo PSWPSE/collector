@@ -6,16 +6,69 @@ import * as path from 'path';
 // FastAPI 서버 URL - 127.0.0.1 사용으로 연결 안정성 개선
 const FASTAPI_URL = 'http://127.0.0.1:8000';
 
-// FastAPI 서버 연결 테스트
+// FastAPI 서버 연결 테스트 (개선된 버전)
 async function testFastApiConnection(): Promise<boolean> {
+  const maxRetries = 3;
+  const timeout = 10000; // 10초 타임아웃으로 증가
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`Health check 시도 ${attempt}/${maxRetries}...`);
+      
+      const response = await fetch(`${FASTAPI_URL}/api/v1/health`, {
+        method: 'GET',
+        signal: AbortSignal.timeout(timeout)
+      });
+      
+      if (response.ok) {
+        console.log(`✅ Health check 성공 (${attempt}번째 시도)`);
+        return true;
+      } else {
+        console.log(`⚠️  Health check 응답 오류: ${response.status}`);
+      }
+    } catch (error) {
+      console.log(`❌ Health check 실패 (${attempt}/${maxRetries}):`, error);
+      
+      // 마지막 시도가 아니면 잠시 대기
+      if (attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, 2000)); // 2초 대기
+      }
+    }
+  }
+  
+  return false;
+}
+
+// FastAPI 서버 자동 시작 시도
+async function tryStartFastApiServer(): Promise<boolean> {
+  console.log('🚀 FastAPI 서버 자동 시작 시도...');
+  
   try {
-    const response = await fetch(`${FASTAPI_URL}/api/v1/health`, {
-      method: 'GET',
-      signal: AbortSignal.timeout(5000) // 5초 타임아웃
+    // Python 스크립트로 서버 시작 시도
+    const { spawn } = await import('child_process');
+    const serverProcess = spawn('python', ['run_server.py', 'start'], {
+      cwd: '../newsforge-pro/backend',
+      detached: true,
+      stdio: 'ignore'
     });
-    return response.ok;
+    
+    serverProcess.unref(); // 프로세스를 백그라운드로 실행
+    
+    // 서버 시작 대기 (최대 30초)
+    for (let i = 0; i < 30; i++) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      if (await testFastApiConnection()) {
+        console.log('✅ FastAPI 서버 자동 시작 성공!');
+        return true;
+      }
+    }
+    
+    console.log('❌ FastAPI 서버 자동 시작 타임아웃');
+    return false;
+    
   } catch (error) {
-    console.error('FastAPI connection test failed:', error);
+    console.log('❌ FastAPI 서버 자동 시작 실패:', error);
     return false;
   }
 }
@@ -37,7 +90,7 @@ async function validateSiteAccess(url: string): Promise<boolean> {
   }
 }
 
-// FastAPI 서버로 변환 요청
+// FastAPI 서버로 변환 요청 (개선된 버전)
 async function callFastApiConverter(
   url: string,
   userApiKey: string,
@@ -47,14 +100,32 @@ async function callFastApiConverter(
   console.log(`Calling FastAPI converter for URL: ${url}`);
   console.log(`Provider: ${userApiProvider}`);
   
-  // 먼저 FastAPI 서버 연결 테스트
-  const isConnected = await testFastApiConnection();
+  // 1단계: FastAPI 서버 연결 테스트
+  let isConnected = await testFastApiConnection();
+  
+  // 2단계: 연결 실패 시 자동 복구 시도
   if (!isConnected) {
-    throw new Error('FastAPI 서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.');
+    console.log('⚠️  FastAPI 서버 연결 실패, 자동 복구 시도...');
+    
+    // 서버 자동 시작 시도
+    const autoStarted = await tryStartFastApiServer();
+    
+    if (autoStarted) {
+      isConnected = true;
+    } else {
+      // 혹시 이미 실행 중이지만 아직 준비가 안 된 경우를 위해 한 번 더 시도
+      console.log('🔄 마지막 연결 시도...');
+      await new Promise(resolve => setTimeout(resolve, 5000)); // 5초 추가 대기
+      isConnected = await testFastApiConnection();
+    }
+  }
+  
+  if (!isConnected) {
+    throw new Error('FastAPI 서버에 연결할 수 없습니다. 서버 자동 시작에 실패했습니다.');
   }
   
   try {
-    // 1. 변환 요청 시작
+    // 3단계: 변환 요청 시작
     const convertResponse = await fetch(`${FASTAPI_URL}/api/v1/convert`, {
       method: 'POST',
       headers: {
@@ -83,7 +154,7 @@ async function callFastApiConverter(
 
     console.log(`FastAPI conversion started, task_id: ${convertData.task_id}`);
     
-    // 2. 결과 폴링
+    // 4단계: 결과 폴링
     const result = await pollForResult(convertData.task_id);
     
     return {
@@ -97,14 +168,20 @@ async function callFastApiConverter(
   }
 }
 
-// 결과 폴링 함수
+// 결과 폴링 함수 (개선된 버전)
 async function pollForResult(taskId: string): Promise<any> {
-  const maxAttempts = 30; // 최대 30회 시도 (약 60초)
-  const pollInterval = 2000; // 2초 간격
+  const maxAttempts = 90; // 최대 90회 시도 (약 90초)
+  const pollInterval = 1000; // 1초 간격
+  let consecutiveErrors = 0;
+  const maxConsecutiveErrors = 5;
+  
+  console.log(`📊 결과 폴링 시작 (Task ID: ${taskId})`);
   
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
-      const response = await fetch(`${FASTAPI_URL}/api/v1/conversion/${taskId}`);
+      const response = await fetch(`${FASTAPI_URL}/api/v1/conversion/${taskId}`, {
+        signal: AbortSignal.timeout(10000) // 10초 타임아웃
+      });
       
       if (!response.ok) {
         if (response.status === 404) {
@@ -115,26 +192,48 @@ async function pollForResult(taskId: string): Promise<any> {
       
       const result = await response.json();
       
+      // 연속 에러 카운터 리셋
+      consecutiveErrors = 0;
+      
       if (result.status === 'completed') {
+        console.log(`✅ 변환 완료! (총 ${attempt + 1}초 소요)`);
         return result;
       } else if (result.status === 'failed') {
+        console.error(`❌ 변환 실패: ${result.error}`);
         throw new Error(result.error || '변환에 실패했습니다.');
       } else {
         // 아직 진행 중
-        console.log(`Conversion in progress: ${result.current_step} (${result.progress}%)`);
+        const progressInfo = result.current_step ? 
+          `${result.current_step} (${result.progress || 0}%)` : 
+          '진행 중...';
+        
+        // 5초마다 진행 상황 로그
+        if (attempt % 5 === 0 || result.progress) {
+          console.log(`⏳ 변환 진행 중: ${progressInfo} (${attempt + 1}초 경과)`);
+        }
+        
         await new Promise(resolve => setTimeout(resolve, pollInterval));
       }
       
     } catch (error) {
-      if (attempt === maxAttempts - 1) {
-        throw error;
+      consecutiveErrors++;
+      console.log(`⚠️  폴링 오류 (${consecutiveErrors}/${maxConsecutiveErrors}):`, error);
+      
+      // 연속으로 너무 많은 에러가 발생하면 중단
+      if (consecutiveErrors >= maxConsecutiveErrors) {
+        throw new Error(`연속적인 네트워크 오류로 인해 변환을 중단합니다. (${consecutiveErrors}회 연속 실패)`);
       }
-      console.log(`Polling attempt ${attempt + 1} failed, retrying...`);
-      await new Promise(resolve => setTimeout(resolve, pollInterval));
+      
+      // 마지막 시도가 아니면 대기
+      if (attempt < maxAttempts - 1) {
+        const retryDelay = Math.min(2000 * consecutiveErrors, 10000); // 점진적 대기 (최대 10초)
+        console.log(`🔄 ${retryDelay/1000}초 후 재시도...`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+      }
     }
   }
   
-  throw new Error('변환 시간이 초과되었습니다.');
+  throw new Error(`변환 시간이 초과되었습니다. (${maxAttempts}초 초과)`);
 }
 
 // Legacy Python 방식 (폴백용)
