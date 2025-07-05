@@ -1,0 +1,384 @@
+# WordPress Integration & Frontend Rules
+
+## 🎯 **WORDPRESS ARCHITECTURE**
+
+### **Custom Theme Structure**
+```
+wp-content/themes/newsforge-pro/
+├── assets/
+│   ├── css/
+│   │   ├── main.css
+│   │   └── admin.css
+│   ├── js/
+│   │   ├── app.js
+│   │   └── admin.js
+│   └── images/
+├── inc/
+│   ├── api-integration.php
+│   ├── user-management.php
+│   ├── payment-processing.php
+│   └── analytics.php
+├── templates/
+│   ├── dashboard.php
+│   ├── converter.php
+│   └── pricing.php
+└── functions.php
+```
+
+### **WordPress + React Integration**
+- **Gutenberg Blocks**: Custom blocks for news conversion interface
+- **REST API**: WordPress REST API for user management
+- **Enqueue Scripts**: Proper script loading with dependencies
+- **Nonce Security**: WordPress nonces for AJAX calls
+
+## 🔧 **DEVELOPMENT STANDARDS**
+
+### **PHP Coding Standards**
+- **PSR-12**: Follow PHP Standards Recommendations
+- **WordPress Coding Standards**: Use WordPress VIP coding standards
+- **Sanitization**: Always sanitize user inputs with WordPress functions
+- **Escaping**: Use proper escaping functions for output
+
+### **JavaScript Standards**
+- **ES6+**: Modern JavaScript with Babel transpilation
+- **React 18**: Functional components with hooks
+- **TypeScript**: Type safety for complex components
+- **WordPress Globals**: Proper handling of wp object
+
+### **CSS Standards**
+- **Mobile-First**: Responsive design starting from mobile
+- **BEM Methodology**: Block Element Modifier naming
+- **SCSS**: Sass preprocessing for better organization
+- **CSS Custom Properties**: Modern CSS variables
+
+## 🎨 **USER INTERFACE REQUIREMENTS**
+
+### **Dashboard Design**
+```php
+<?php
+// Dashboard page template
+function render_dashboard_page() {
+    ?>
+    <div class="newsforge-dashboard">
+        <div class="dashboard-header">
+            <h1><?php echo esc_html__('News Converter Dashboard', 'newsforge-pro'); ?></h1>
+            <div class="user-stats">
+                <span class="usage-counter"><?php echo get_user_usage_count(); ?>/<?php echo get_user_limit(); ?></span>
+                <span class="plan-type"><?php echo get_user_plan_type(); ?></span>
+            </div>
+        </div>
+        
+        <div class="converter-interface">
+            <div class="url-input-section">
+                <input type="url" id="news-url" placeholder="Enter news URL..." />
+                <button id="convert-btn" class="btn-primary">Convert to Social Content</button>
+            </div>
+            
+            <div class="results-section" id="conversion-results">
+                <!-- Results will be populated here -->
+            </div>
+        </div>
+        
+        <!-- AdSense Ad Placement -->
+        <div class="ad-placement ad-sidebar">
+            <?php echo render_adsense_ad('sidebar'); ?>
+        </div>
+    </div>
+    <?php
+}
+?>
+```
+
+### **Conversion Interface**
+- **Progress Indicators**: Real-time conversion progress
+- **Error Handling**: User-friendly error messages
+- **Copy to Clipboard**: One-click copy functionality
+- **Share Options**: Direct sharing to social platforms
+
+## 💰 **ADSENSE OPTIMIZATION**
+
+### **Strategic Ad Placement**
+```php
+<?php
+// AdSense placement functions
+function render_adsense_ad($position) {
+    if (is_user_premium()) {
+        return ''; // No ads for premium users
+    }
+    
+    $ad_configs = [
+        'header' => [
+            'size' => '728x90',
+            'slot' => 'your-header-slot-id'
+        ],
+        'sidebar' => [
+            'size' => '300x250',
+            'slot' => 'your-sidebar-slot-id'
+        ],
+        'footer' => [
+            'size' => '320x50',
+            'slot' => 'your-footer-slot-id'
+        ]
+    ];
+    
+    $config = $ad_configs[$position] ?? null;
+    if (!$config) return '';
+    
+    return sprintf(
+        '<ins class="adsbygoogle"
+             style="display:inline-block;width:%spx;height:%spx"
+             data-ad-client="ca-pub-your-publisher-id"
+             data-ad-slot="%s"></ins>',
+        $config['size'],
+        $config['slot']
+    );
+}
+
+// Auto-insert ads in content
+function auto_insert_ads($content) {
+    if (is_single() && !is_user_premium()) {
+        $paragraphs = explode('</p>', $content);
+        if (count($paragraphs) > 3) {
+            $ad_html = '<div class="in-content-ad">' . render_adsense_ad('content') . '</div>';
+            array_splice($paragraphs, 3, 0, $ad_html);
+            $content = implode('</p>', $paragraphs);
+        }
+    }
+    return $content;
+}
+add_filter('the_content', 'auto_insert_ads');
+?>
+```
+
+### **SEO Optimization**
+- **Meta Tags**: Dynamic meta descriptions for converted content
+- **Schema Markup**: Structured data for better search visibility
+- **Sitemap**: Auto-generated sitemap for converted articles
+- **Page Speed**: Optimized loading with caching
+
+## 🔐 **SECURITY IMPLEMENTATION**
+
+### **User Authentication**
+```php
+<?php
+// Custom user management
+function register_user_with_limits($user_data) {
+    $user_id = wp_insert_user($user_data);
+    
+    if (!is_wp_error($user_id)) {
+        // Set default usage limits
+        update_user_meta($user_id, 'daily_usage_limit', 5);
+        update_user_meta($user_id, 'current_usage', 0);
+        update_user_meta($user_id, 'plan_type', 'free');
+        update_user_meta($user_id, 'last_reset_date', current_time('Y-m-d'));
+        
+        // Send welcome email
+        wp_mail(
+            $user_data['user_email'],
+            'Welcome to NewsForge Pro',
+            get_welcome_email_template()
+        );
+    }
+    
+    return $user_id;
+}
+
+// Check usage limits
+function check_user_usage_limit($user_id) {
+    $current_usage = get_user_meta($user_id, 'current_usage', true);
+    $daily_limit = get_user_meta($user_id, 'daily_usage_limit', true);
+    $plan_type = get_user_meta($user_id, 'plan_type', true);
+    
+    if ($plan_type === 'premium') {
+        return true; // Unlimited for premium users
+    }
+    
+    reset_daily_usage_if_needed($user_id);
+    
+    return intval($current_usage) < intval($daily_limit);
+}
+?>
+```
+
+### **API Security**
+- **JWT Tokens**: Secure API authentication
+- **Rate Limiting**: Prevent abuse with progressive limits
+- **Input Validation**: Sanitize all inputs before processing
+- **CSRF Protection**: WordPress nonces for all forms
+
+## 📊 **ANALYTICS & TRACKING**
+
+### **Custom Analytics**
+```javascript
+// Google Analytics 4 + Custom Tracking
+class NewsForgeAnalytics {
+    constructor() {
+        this.initGA4();
+        this.trackUserInteractions();
+    }
+    
+    initGA4() {
+        gtag('config', 'GA_MEASUREMENT_ID', {
+            custom_map: {
+                'custom_parameter_1': 'user_plan',
+                'custom_parameter_2': 'conversion_type'
+            }
+        });
+    }
+    
+    trackConversion(url, conversionType, success) {
+        gtag('event', 'news_conversion', {
+            'event_category': 'conversion',
+            'event_label': conversionType,
+            'value': success ? 1 : 0,
+            'custom_parameter_1': this.getUserPlan(),
+            'custom_parameter_2': conversionType
+        });
+        
+        // Custom analytics to database
+        this.sendToDatabase({
+            action: 'conversion_attempt',
+            url: url,
+            type: conversionType,
+            success: success,
+            timestamp: new Date().toISOString()
+        });
+    }
+    
+    trackAdInteraction(adPosition) {
+        gtag('event', 'ad_interaction', {
+            'event_category': 'monetization',
+            'event_label': adPosition,
+            'value': 1
+        });
+    }
+}
+```
+
+### **Conversion Tracking**
+- **User Journey**: Track complete conversion funnel
+- **A/B Testing**: Test different UI variations
+- **Revenue Attribution**: Track ad revenue and premium conversions
+- **Performance Metrics**: Monitor conversion success rates
+
+## 🎯 **USER EXPERIENCE OPTIMIZATION**
+
+### **Mobile-First Design**
+```scss
+// Mobile-first responsive design
+.newsforge-dashboard {
+    padding: 1rem;
+    
+    @media (min-width: 768px) {
+        padding: 2rem;
+        display: grid;
+        grid-template-columns: 1fr 300px;
+        gap: 2rem;
+    }
+    
+    .converter-interface {
+        .url-input-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            
+            @media (min-width: 768px) {
+                flex-direction: row;
+                align-items: center;
+            }
+            
+            input[type="url"] {
+                flex: 1;
+                padding: 0.75rem;
+                border: 2px solid #e1e5e9;
+                border-radius: 8px;
+                font-size: 1rem;
+                
+                &:focus {
+                    outline: none;
+                    border-color: #007cba;
+                    box-shadow: 0 0 0 3px rgba(0, 124, 186, 0.1);
+                }
+            }
+            
+            .btn-primary {
+                padding: 0.75rem 1.5rem;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                
+                &:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                }
+                
+                &:disabled {
+                    opacity: 0.6;
+                    cursor: not-allowed;
+                    transform: none;
+                }
+            }
+        }
+    }
+}
+```
+
+### **Performance Optimization**
+- **Lazy Loading**: Load content as needed
+- **Caching**: WordPress caching + Redis
+- **CDN**: Serve static assets from CDN
+- **Image Optimization**: WebP format with fallbacks
+
+## 🔄 **INTEGRATION PATTERNS**
+
+### **WordPress + FastAPI Communication**
+```javascript
+// WordPress to FastAPI integration
+class NewsConverter {
+    constructor() {
+        this.apiEndpoint = newsforge_ajax.api_url;
+        this.nonce = newsforge_ajax.nonce;
+    }
+    
+    async convertNews(url) {
+        try {
+            const response = await fetch(`${this.apiEndpoint}/convert`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-WP-Nonce': this.nonce
+                },
+                body: JSON.stringify({
+                    url: url,
+                    user_id: this.getCurrentUserId(),
+                    api_key: this.getApiKey()
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error('Conversion failed:', error);
+            throw error;
+        }
+    }
+    
+    updateUsageCount() {
+        // Update WordPress user meta
+        wp.ajax.post('update_usage_count', {
+            _ajax_nonce: this.nonce,
+            action: 'update_usage_count'
+        });
+    }
+}
+```
+
+**Remember**: WordPress provides the user experience, FastAPI handles the heavy processing. Keep the separation of concerns clear and maintain consistent user experience across all touchpoints.

@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  # PostgreSQL 데이터베이스
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: news_to_social
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  # Redis (캐싱 및 세션 관리)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  # Python FastAPI 서버
+  python-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.python
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/news_to_social
+      - REDIS_URL=redis://redis:6379
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./converted_articles:/app/converted_articles
+      - ./temp_extracted:/app/temp_extracted
+    restart: unless-stopped
+
+  # Next.js 프론트엔드
+  nextjs:
+    build:
+      context: ./news-to-social-web
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/news_to_social
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - NEXTAUTH_URL=http://localhost:3000
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - ENCRYPTION_SECRET=${ENCRYPTION_SECRET}
+      - PYTHON_API_URL=http://python-api:8000
+      - GOOGLE_ADSENSE_ID=${GOOGLE_ADSENSE_ID}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+      - python-api
+    restart: unless-stopped
+
+  # Nginx 리버스 프록시 (프로덕션용)
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      - nextjs
+      - python-api
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    name: news-to-social-network 

@@ -1,0 +1,158 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts    Account[]
+  sessions    Session[]
+  apiKeys     ApiKey[]
+  conversions ConversionResult[]
+  settings    UserSettings?
+
+  @@map("users")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model ApiKey {
+  id        String   @id @default(cuid())
+  name      String
+  provider  String   // 'anthropic' | 'openai'
+  keyHash   String   // Encrypted API key
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  lastUsed  DateTime?
+
+  userId      String
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversions ConversionResult[]
+
+  @@index([userId, provider])
+  @@map("api_keys")
+}
+
+model ConversionResult {
+  id             String   @id @default(cuid())
+  url            String
+  title          String?
+  content        String?
+  markdown       String?
+  status         String   @default("pending") // 'pending' | 'processing' | 'completed' | 'failed'
+  processingTime Int?     // in milliseconds
+  tokens         Int?
+  cost           Float?
+  error          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  userId   String
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  apiKeyId String?
+  apiKey   ApiKey? @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([status])
+  @@map("conversion_results")
+}
+
+model UserSettings {
+  id                   String  @id @default(cuid())
+  defaultConverter     String  @default("anthropic") // 'anthropic' | 'openai' | 'local'
+  keepTxtFiles         Boolean @default(false)
+  autoShare            Boolean @default(false)
+  emailNotifications   Boolean @default(true)
+  theme                String  @default("system") // 'light' | 'dark' | 'system'
+  maxDailyConversions  Int     @default(50)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_settings")
+}
+
+model UsageLog {
+  id             String   @id @default(cuid())
+  userId         String
+  action         String   // 'conversion', 'api_key_test', 'login', etc.
+  metadata       Json?    // Additional data
+  processingTime Int?     // in milliseconds
+  success        Boolean  @default(true)
+  error          String?
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+  @@map("usage_logs")
+}
+
+model AdSpace {
+  id        String   @id @default(cuid())
+  position  String   // 'header' | 'sidebar' | 'footer' | 'in-content'
+  type      String   // 'adsense' | 'wordpress' | 'custom'
+  size      String   // e.g., "728x90", "300x250"
+  content   String?  // Ad code or content
+  isActive  Boolean  @default(true)
+  priority  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([position, isActive])
+  @@map("ad_spaces")
+}

@@ -1,0 +1,738 @@
+# User Experience & SEO Optimization Rules
+
+## 🎨 **USER EXPERIENCE PRINCIPLES**
+
+### **Mobile-First Design Standards**
+```scss
+// Mobile-first responsive breakpoints
+$breakpoints: (
+  mobile: 320px,
+  tablet: 768px,
+  desktop: 1024px,
+  large: 1200px
+);
+
+// Responsive mixin
+@mixin respond-to($breakpoint) {
+  @if map-has-key($breakpoints, $breakpoint) {
+    @media (min-width: map-get($breakpoints, $breakpoint)) {
+      @content;
+    }
+  }
+}
+
+// Usage example
+.newsforge-container {
+  padding: 1rem;
+  
+  @include respond-to(tablet) {
+    padding: 2rem;
+  }
+  
+  @include respond-to(desktop) {
+    padding: 3rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+}
+```
+
+### **Accessibility (WCAG 2.1 AA Compliance)**
+```html
+<!-- Semantic HTML structure -->
+<main role="main" aria-labelledby="main-heading">
+  <header>
+    <h1 id="main-heading">News to Social Content Converter</h1>
+    <nav aria-label="Main navigation">
+      <ul>
+        <li><a href="#converter" aria-describedby="converter-desc">
+          Converter Tool
+          <span id="converter-desc" class="sr-only">
+            Convert news articles to social media posts
+          </span>
+        </a></li>
+      </ul>
+    </nav>
+  </header>
+  
+  <section aria-labelledby="converter-heading">
+    <h2 id="converter-heading">URL Converter</h2>
+    
+    <form role="form" aria-label="News URL conversion form">
+      <label for="news-url">
+        Enter News Article URL
+        <span class="required" aria-label="required">*</span>
+      </label>
+      <input 
+        type="url" 
+        id="news-url" 
+        name="news-url"
+        required
+        aria-describedby="url-help"
+        aria-invalid="false"
+        autocomplete="url"
+      />
+      <div id="url-help" class="help-text">
+        Enter the full URL of the news article you want to convert
+      </div>
+      
+      <button 
+        type="submit" 
+        aria-describedby="convert-status"
+        class="btn-primary"
+      >
+        <span class="btn-text">Convert Article</span>
+        <span class="loading-spinner" aria-hidden="true"></span>
+      </button>
+      
+      <div id="convert-status" class="sr-only" aria-live="polite" aria-atomic="true">
+        <!-- Status updates will be announced to screen readers -->
+      </div>
+    </form>
+  </section>
+</main>
+```
+
+### **Performance Optimization**
+```javascript
+// Lazy loading implementation
+class LazyLoader {
+  constructor() {
+    this.imageObserver = new IntersectionObserver(
+      (entries, observer) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const img = entry.target;
+            img.src = img.dataset.src;
+            img.classList.remove('lazy');
+            observer.unobserve(img);
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+    
+    this.contentObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            this.loadContent(entry.target);
+          }
+        });
+      },
+      { threshold: 0.2 }
+    );
+  }
+  
+  observeImages() {
+    document.querySelectorAll('img[data-src]').forEach(img => {
+      this.imageObserver.observe(img);
+    });
+  }
+  
+  observeContent() {
+    document.querySelectorAll('.lazy-content').forEach(content => {
+      this.contentObserver.observe(content);
+    });
+  }
+  
+  async loadContent(element) {
+    const url = element.dataset.url;
+    try {
+      const response = await fetch(url);
+      const html = await response.text();
+      element.innerHTML = html;
+      element.classList.remove('lazy-content');
+    } catch (error) {
+      console.error('Failed to load content:', error);
+    }
+  }
+}
+
+// Initialize lazy loading
+document.addEventListener('DOMContentLoaded', () => {
+  const lazyLoader = new LazyLoader();
+  lazyLoader.observeImages();
+  lazyLoader.observeContent();
+});
+
+// Service Worker for offline capability
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js')
+    .then(registration => {
+      console.log('SW registered:', registration);
+    })
+    .catch(error => {
+      console.log('SW registration failed:', error);
+    });
+}
+```
+
+### **Progressive Enhancement**
+```javascript
+// Feature detection and graceful degradation
+class FeatureDetector {
+  constructor() {
+    this.features = {
+      clipboard: !!navigator.clipboard,
+      webShare: !!navigator.share,
+      intersectionObserver: !!window.IntersectionObserver,
+      serviceWorker: !!navigator.serviceWorker,
+      webWorkers: !!window.Worker
+    };
+  }
+  
+  hasFeature(feature) {
+    return this.features[feature] || false;
+  }
+  
+  async copyToClipboard(text) {
+    if (this.hasFeature('clipboard')) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (err) {
+        console.warn('Clipboard API failed, using fallback');
+      }
+    }
+    
+    // Fallback for older browsers
+    return this.fallbackCopyToClipboard(text);
+  }
+  
+  fallbackCopyToClipboard(text) {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    textArea.style.top = '-999999px';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    
+    try {
+      document.execCommand('copy');
+      return true;
+    } catch (err) {
+      console.error('Fallback copy failed:', err);
+      return false;
+    } finally {
+      document.body.removeChild(textArea);
+    }
+  }
+  
+  async shareContent(shareData) {
+    if (this.hasFeature('webShare')) {
+      try {
+        await navigator.share(shareData);
+        return true;
+      } catch (err) {
+        console.warn('Web Share API failed, using fallback');
+      }
+    }
+    
+    // Fallback: Copy to clipboard
+    return this.copyToClipboard(shareData.text || shareData.url);
+  }
+}
+```
+
+## 🔍 **SEO OPTIMIZATION**
+
+### **Meta Tags & Structured Data**
+```php
+<?php
+// Dynamic meta tags for converted content
+function generate_seo_meta($article_data) {
+    $title = esc_html($article_data['title']);
+    $description = wp_trim_words(strip_tags($article_data['content']), 30);
+    $url = esc_url($article_data['url']);
+    $image = get_article_image($article_data);
+    
+    echo '<meta name="description" content="' . esc_attr($description) . '">';
+    echo '<meta name="keywords" content="' . esc_attr(generate_keywords($article_data)) . '">';
+    
+    // Open Graph tags
+    echo '<meta property="og:title" content="' . esc_attr($title) . '">';
+    echo '<meta property="og:description" content="' . esc_attr($description) . '">';
+    echo '<meta property="og:url" content="' . esc_url(get_permalink()) . '">';
+    echo '<meta property="og:type" content="article">';
+    echo '<meta property="og:image" content="' . esc_url($image) . '">';
+    
+    // Twitter Card tags
+    echo '<meta name="twitter:card" content="summary_large_image">';
+    echo '<meta name="twitter:title" content="' . esc_attr($title) . '">';
+    echo '<meta name="twitter:description" content="' . esc_attr($description) . '">';
+    echo '<meta name="twitter:image" content="' . esc_url($image) . '">';
+}
+
+// Structured data for rich snippets
+function generate_structured_data($article_data) {
+    $schema = [
+        '@context' => 'https://schema.org',
+        '@type' => 'Article',
+        'headline' => $article_data['title'],
+        'description' => wp_trim_words(strip_tags($article_data['content']), 30),
+        'image' => get_article_image($article_data),
+        'datePublished' => $article_data['publish_date'],
+        'dateModified' => current_time('c'),
+        'author' => [
+            '@type' => 'Organization',
+            'name' => get_bloginfo('name'),
+            'url' => home_url()
+        ],
+        'publisher' => [
+            '@type' => 'Organization',
+            'name' => get_bloginfo('name'),
+            'logo' => [
+                '@type' => 'ImageObject',
+                'url' => get_site_icon_url()
+            ]
+        ]
+    ];
+    
+    echo '<script type="application/ld+json">';
+    echo json_encode($schema, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+    echo '</script>';
+}
+?>
+```
+
+### **Content Optimization**
+```javascript
+// SEO-friendly URL generation
+class SEOOptimizer {
+  constructor() {
+    this.stopWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'];
+  }
+  
+  generateSEOSlug(title) {
+    return title
+      .toLowerCase()
+      .replace(/[^\w\s-]/g, '') // Remove special characters
+      .replace(/\s+/g, '-') // Replace spaces with hyphens
+      .replace(/-+/g, '-') // Remove multiple hyphens
+      .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
+  }
+  
+  generateKeywords(content) {
+    const words = content.toLowerCase().split(/\W+/);
+    const filtered = words.filter(word => 
+      word.length > 3 && !this.stopWords.includes(word)
+    );
+    
+    // Count word frequency
+    const frequency = {};
+    filtered.forEach(word => {
+      frequency[word] = (frequency[word] || 0) + 1;
+    });
+    
+    // Return top keywords
+    return Object.entries(frequency)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([word]) => word);
+  }
+  
+  optimizeContent(content) {
+    // Add internal links
+    const optimized = this.addInternalLinks(content);
+    
+    // Optimize headings
+    return this.optimizeHeadings(optimized);
+  }
+  
+  addInternalLinks(content) {
+    const linkOpportunities = {
+      'social media': '/social-media-guide',
+      'content marketing': '/content-marketing-tips',
+      'news conversion': '/how-it-works',
+      'digital marketing': '/digital-marketing-tools'
+    };
+    
+    let optimized = content;
+    Object.entries(linkOpportunities).forEach(([keyword, url]) => {
+      const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
+      optimized = optimized.replace(regex, `<a href="${url}">${keyword}</a>`);
+    });
+    
+    return optimized;
+  }
+  
+  optimizeHeadings(content) {
+    // Ensure proper heading hierarchy
+    const headings = content.match(/<h[1-6][^>]*>.*?<\/h[1-6]>/gi) || [];
+    
+    headings.forEach(heading => {
+      const level = parseInt(heading.match(/h([1-6])/)[1]);
+      const text = heading.replace(/<[^>]*>/g, '');
+      
+      // Add keyword optimization
+      const optimizedText = this.addKeywordsToHeading(text);
+      const optimizedHeading = heading.replace(text, optimizedText);
+      
+      content = content.replace(heading, optimizedHeading);
+    });
+    
+    return content;
+  }
+  
+  addKeywordsToHeading(heading) {
+    // Add relevant keywords to headings for SEO
+    const keywords = ['news converter', 'social media', 'content creation'];
+    
+    keywords.forEach(keyword => {
+      if (!heading.toLowerCase().includes(keyword) && Math.random() > 0.7) {
+        heading += ` - ${keyword}`;
+      }
+    });
+    
+    return heading;
+  }
+}
+```
+
+### **Site Performance & Core Web Vitals**
+```javascript
+// Web Vitals monitoring
+import { getCLS, getFID, getFCP, getLCP, getTTFB } from 'web-vitals';
+
+class WebVitalsMonitor {
+  constructor() {
+    this.metrics = {};
+    this.initializeTracking();
+  }
+  
+  initializeTracking() {
+    getCLS(this.onCLS.bind(this));
+    getFID(this.onFID.bind(this));
+    getFCP(this.onFCP.bind(this));
+    getLCP(this.onLCP.bind(this));
+    getTTFB(this.onTTFB.bind(this));
+  }
+  
+  onCLS(metric) {
+    this.metrics.cls = metric;
+    this.sendToAnalytics('CLS', metric);
+  }
+  
+  onFID(metric) {
+    this.metrics.fid = metric;
+    this.sendToAnalytics('FID', metric);
+  }
+  
+  onFCP(metric) {
+    this.metrics.fcp = metric;
+    this.sendToAnalytics('FCP', metric);
+  }
+  
+  onLCP(metric) {
+    this.metrics.lcp = metric;
+    this.sendToAnalytics('LCP', metric);
+  }
+  
+  onTTFB(metric) {
+    this.metrics.ttfb = metric;
+    this.sendToAnalytics('TTFB', metric);
+  }
+  
+  sendToAnalytics(name, metric) {
+    // Send to Google Analytics
+    gtag('event', name, {
+      event_category: 'Web Vitals',
+      event_label: metric.id,
+      value: Math.round(metric.value),
+      non_interaction: true
+    });
+    
+    // Send to custom analytics
+    fetch('/api/analytics/web-vitals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        value: metric.value,
+        id: metric.id,
+        timestamp: Date.now()
+      })
+    });
+  }
+  
+  getMetrics() {
+    return this.metrics;
+  }
+}
+
+// Initialize monitoring
+document.addEventListener('DOMContentLoaded', () => {
+  window.webVitalsMonitor = new WebVitalsMonitor();
+});
+```
+
+### **Content Strategy for AdSense**
+```javascript
+// AdSense optimization
+class AdSenseOptimizer {
+  constructor() {
+    this.adPlacements = {
+      'above-fold': { size: '728x90', priority: 'high' },
+      'sidebar': { size: '300x250', priority: 'medium' },
+      'in-content': { size: '336x280', priority: 'high' },
+      'below-content': { size: '728x90', priority: 'low' }
+    };
+  }
+  
+  optimizeAdPlacement() {
+    // Only show ads to non-premium users
+    if (this.isUserPremium()) {
+      return;
+    }
+    
+    // Lazy load ads for better performance
+    this.lazyLoadAds();
+    
+    // Track ad performance
+    this.trackAdPerformance();
+  }
+  
+  lazyLoadAds() {
+    const adElements = document.querySelectorAll('.ad-placeholder');
+    
+    const adObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          this.loadAd(entry.target);
+          adObserver.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.1 });
+    
+    adElements.forEach(ad => adObserver.observe(ad));
+  }
+  
+  loadAd(element) {
+    const placement = element.dataset.placement;
+    const config = this.adPlacements[placement];
+    
+    if (!config) return;
+    
+    const adCode = `
+      <ins class="adsbygoogle"
+           style="display:inline-block;width:${config.size.split('x')[0]}px;height:${config.size.split('x')[1]}px"
+           data-ad-client="ca-pub-your-publisher-id"
+           data-ad-slot="${this.getAdSlot(placement)}"></ins>
+    `;
+    
+    element.innerHTML = adCode;
+    
+    // Load AdSense script if not already loaded
+    if (!window.adsbygoogle) {
+      const script = document.createElement('script');
+      script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js';
+      script.async = true;
+      script.crossOrigin = 'anonymous';
+      document.head.appendChild(script);
+    }
+    
+    // Push ad to AdSense
+    (adsbygoogle = window.adsbygoogle || []).push({});
+  }
+  
+  getAdSlot(placement) {
+    const slots = {
+      'above-fold': 'your-header-slot-id',
+      'sidebar': 'your-sidebar-slot-id',
+      'in-content': 'your-content-slot-id',
+      'below-content': 'your-footer-slot-id'
+    };
+    
+    return slots[placement] || 'default-slot-id';
+  }
+  
+  trackAdPerformance() {
+    // Track ad clicks and impressions
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('.adsbygoogle')) {
+        gtag('event', 'ad_click', {
+          event_category: 'monetization',
+          event_label: 'adsense',
+          value: 1
+        });
+      }
+    });
+  }
+  
+  isUserPremium() {
+    return document.body.classList.contains('premium-user');
+  }
+}
+
+// Initialize AdSense optimization
+document.addEventListener('DOMContentLoaded', () => {
+  const adOptimizer = new AdSenseOptimizer();
+  adOptimizer.optimizeAdPlacement();
+});
+```
+
+## 📊 **Analytics & Conversion Tracking**
+
+### **Advanced Analytics Implementation**
+```javascript
+// Comprehensive analytics tracking
+class AnalyticsManager {
+  constructor() {
+    this.initialized = false;
+    this.queue = [];
+    this.init();
+  }
+  
+  init() {
+    // Initialize Google Analytics 4
+    this.initGA4();
+    
+    // Initialize custom analytics
+    this.initCustomAnalytics();
+    
+    // Track user interactions
+    this.trackUserInteractions();
+    
+    this.initialized = true;
+    this.processQueue();
+  }
+  
+  initGA4() {
+    gtag('config', 'GA_MEASUREMENT_ID', {
+      custom_map: {
+        'custom_parameter_1': 'user_plan',
+        'custom_parameter_2': 'conversion_success'
+      }
+    });
+  }
+  
+  initCustomAnalytics() {
+    // Initialize custom analytics endpoint
+    this.analyticsEndpoint = '/api/analytics/track';
+  }
+  
+  trackUserInteractions() {
+    // Track form submissions
+    document.addEventListener('submit', (e) => {
+      if (e.target.id === 'converter-form') {
+        this.trackEvent('form_submit', {
+          form_type: 'converter',
+          url: e.target.querySelector('#news-url').value
+        });
+      }
+    });
+    
+    // Track button clicks
+    document.addEventListener('click', (e) => {
+      if (e.target.matches('.btn-primary')) {
+        this.trackEvent('button_click', {
+          button_type: 'primary',
+          button_text: e.target.textContent.trim()
+        });
+      }
+    });
+    
+    // Track copy actions
+    document.addEventListener('copy', (e) => {
+      const selection = window.getSelection().toString();
+      if (selection.length > 10) {
+        this.trackEvent('content_copy', {
+          content_length: selection.length,
+          content_type: 'converted_content'
+        });
+      }
+    });
+  }
+  
+  trackEvent(eventName, parameters = {}) {
+    const event = {
+      event_name: eventName,
+      timestamp: Date.now(),
+      url: window.location.href,
+      user_agent: navigator.userAgent,
+      ...parameters
+    };
+    
+    if (this.initialized) {
+      this.sendEvent(event);
+    } else {
+      this.queue.push(event);
+    }
+  }
+  
+  sendEvent(event) {
+    // Send to Google Analytics
+    gtag('event', event.event_name, {
+      event_category: event.category || 'user_interaction',
+      event_label: event.label || event.event_name,
+      value: event.value || 1,
+      custom_parameter_1: this.getUserPlan(),
+      custom_parameter_2: event.conversion_success || false
+    });
+    
+    // Send to custom analytics
+    fetch(this.analyticsEndpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(event)
+    }).catch(error => {
+      console.error('Analytics error:', error);
+    });
+  }
+  
+  processQueue() {
+    while (this.queue.length > 0) {
+      const event = this.queue.shift();
+      this.sendEvent(event);
+    }
+  }
+  
+  getUserPlan() {
+    return document.body.dataset.userPlan || 'free';
+  }
+  
+  trackConversion(success, processingTime, errorType = null) {
+    this.trackEvent('conversion_attempt', {
+      category: 'conversion',
+      conversion_success: success,
+      processing_time: processingTime,
+      error_type: errorType,
+      value: success ? 1 : 0
+    });
+  }
+  
+  trackPremiumUpgrade(plan, price) {
+    this.trackEvent('premium_upgrade', {
+      category: 'monetization',
+      plan: plan,
+      value: price
+    });
+    
+    // Enhanced ecommerce tracking
+    gtag('event', 'purchase', {
+      transaction_id: Date.now().toString(),
+      value: price,
+      currency: 'USD',
+      items: [{
+        item_id: plan,
+        item_name: `NewsForge Pro ${plan}`,
+        category: 'subscription',
+        quantity: 1,
+        price: price
+      }]
+    });
+  }
+}
+
+// Initialize analytics
+window.analytics = new AnalyticsManager();
+```
+
+**Remember**: User experience is king. Every feature must serve the user first. SEO drives traffic, but UX converts visitors to customers. Always test with real users, measure everything, and optimize continuously based on data, not assumptions.
+description:
+globs:
+alwaysApply: false
+---
