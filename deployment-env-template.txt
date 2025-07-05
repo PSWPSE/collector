@@ -1,0 +1,20 @@
+# NewsForge Pro Deployment Environment Variables Template
+
+## Railway (Backend) Environment Variables
+OPENAI_API_KEY=sk-your-openai-api-key-here
+ANTHROPIC_API_KEY=sk-ant-your-anthropic-api-key-here
+DATABASE_URL=postgresql://user:password@host:5432/database
+CORS_ORIGINS=*.vercel.app
+SECRET_KEY=your-super-secret-key-here
+ENVIRONMENT=production
+PORT=8000
+PYTHONPATH=/app
+
+## Vercel (Frontend) Environment Variables  
+NEXT_PUBLIC_API_URL=https://your-backend-domain.up.railway.app
+
+## Instructions:
+1. Railway에서 위의 Backend 환경 변수들을 설정하세요
+2. Vercel에서 위의 Frontend 환경 변수를 설정하세요
+3. OpenAI API 키는 https://platform.openai.com/api-keys 에서 발급받으세요
+4. 각 값에서 'your-'로 시작하는 부분을 실제 값으로 교체하세요 
