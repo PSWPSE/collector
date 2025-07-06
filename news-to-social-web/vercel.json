@@ -1,10 +1,14 @@
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "npx prisma generate && npm run build",
   "outputDirectory": ".next",
   "framework": "nextjs",
   "installCommand": "npm install",
   "env": {
-    "NEXT_PUBLIC_API_URL": "@next_public_api_url"
+    "NEXT_PUBLIC_FASTAPI_URL": "https://nongbux-production.up.railway.app",
+    "FASTAPI_URL": "https://nongbux-production.up.railway.app",
+    "NEXTAUTH_URL": "https://news-to-social-web.vercel.app",
+    "NEXTAUTH_SECRET": "newsforge-pro-secret-key-2024",
+    "ENCRYPTION_SECRET": "newsforge-encryption-key-32chars"
   },
   "functions": {
     "app/api/**": {
