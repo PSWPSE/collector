@@ -10,8 +10,12 @@ from datetime import datetime
 import uuid
 
 # 중앙집중식 설정 import
-from ..config.api_keys import get_openai_key, get_anthropic_key, validate_api_key
-from ..config.content_guidelines import get_content_prompt, fix_content_format
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from config.api_keys import get_openai_key, get_anthropic_key, validate_api_key
+from config.content_guidelines import get_content_prompt, fix_content_format, get_prompt_template
 
 # AI 클라이언트
 import openai
@@ -110,13 +114,40 @@ class UnifiedConverter:
         if provider not in self.supported_providers:
             raise ValueError(f"Unsupported provider: {provider}")
         
+        # 디버깅을 위한 로깅 추가
+        logger.info(f"🔑 API Key validation - Provider: {provider}, User key provided: {user_key is not None}")
+        if user_key:
+            logger.info(f"🔑 User key length: {len(user_key)}, starts with: {user_key[:10]}...")
+        else:
+            logger.warning("🔑 No user API key provided!")
+        
         try:
             if provider == 'openai':
-                return get_openai_key(user_key)
+                # user_key가 None이거나 빈 문자열인 경우 명시적으로 처리
+                if not user_key or user_key.strip() == "":
+                    logger.error("🔑 OpenAI user key is empty or None")
+                    raise ValueError("OpenAI API key is required")
+                
+                validated_key = get_openai_key(user_key)
+                logger.info(f"🔑 OpenAI key validated successfully: {validated_key[:10]}...")
+                return validated_key
+                
             elif provider == 'anthropic':
-                return get_anthropic_key(user_key)
+                if not user_key or user_key.strip() == "":
+                    logger.error("🔑 Anthropic user key is empty or None")
+                    raise ValueError("Anthropic API key is required")
+                
+                validated_key = get_anthropic_key(user_key)
+                logger.info(f"🔑 Anthropic key validated successfully: {validated_key[:10]}...")
+                return validated_key
+            else:
+                raise ValueError(f"Unsupported provider: {provider}")
         except ValueError as e:
-            raise ValueError(f"API key validation failed for {provider}: {str(e)}")
+            logger.error(f"❌ API key validation failed for {provider}: {str(e)}")
+            raise ValueError(f"API 키와 제공업체를 설정해주세요. 상세: {str(e)}")
+        except Exception as e:
+            logger.error(f"❌ Unexpected error during API key validation: {str(e)}")
+            raise ValueError(f"API 키와 제공업체를 설정해주세요. 예상치 못한 오류: {str(e)}")
     
     async def _call_ai_api(self, provider: str, api_key: str, prompt: str) -> str:
         """AI API 통합 호출"""

@@ -16,8 +16,12 @@ from pydantic import BaseModel, HttpUrl
 import uvicorn
 
 # 통합 서비스 import
-from .services.unified_converter import get_unified_converter, convert_news_unified, validate_user_api_key
-from .config.api_keys import get_all_available_keys
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from services.unified_converter import get_unified_converter, convert_news_unified, validate_user_api_key
+from config.api_keys import get_all_available_keys
 
 
 # 로깅 설정
