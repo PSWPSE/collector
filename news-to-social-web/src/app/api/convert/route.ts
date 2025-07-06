@@ -3,8 +3,8 @@ import { spawn } from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
-// FastAPI 서버 URL - 127.0.0.1 사용으로 연결 안정성 개선
-const FASTAPI_URL = 'http://127.0.0.1:8000';
+// FastAPI 서버 URL - Railway 백엔드 직접 연결
+const FASTAPI_URL = 'https://nongbux-production.up.railway.app';
 
 // FastAPI 서버 연결 테스트 (개선된 버전)
 async function testFastApiConnection(): Promise<boolean> {
