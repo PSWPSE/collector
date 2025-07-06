@@ -3,8 +3,10 @@ import { spawn } from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
-// FastAPI 서버 URL - Railway 백엔드 직접 연결
+// FastAPI 서버 URL - Railway 배포된 백엔드 (8080 포트)
 const FASTAPI_URL = 'https://nongbux-production.up.railway.app';
+
+console.log(`🔗 FastAPI URL: ${FASTAPI_URL}`);
 
 // FastAPI 서버 연결 테스트 (개선된 버전)
 async function testFastApiConnection(): Promise<boolean> {
@@ -13,7 +15,7 @@ async function testFastApiConnection(): Promise<boolean> {
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      console.log(`Health check 시도 ${attempt}/${maxRetries}...`);
+      console.log(`Health check 시도 ${attempt}/${maxRetries}... (URL: ${FASTAPI_URL})`);
       
       const response = await fetch(`${FASTAPI_URL}/api/v1/health`, {
         method: 'GET',
